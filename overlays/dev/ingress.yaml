@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mosquitto-ingress
+  namespace: broker-mqtt-acme
+  annotations:
+    nginx.ingress.kubernetes.io/tcp-services-configmap: broker-mqtt-acme/tcp-services
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mosquitto-service
+            port:
+              number: 9002

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-services
+  namespace: broker-mqtt-acme
+  labels:
+    app: mosquitto
+    component: ingress
+data:
+  # MQTT TCP port mapping
+  "1883": "broker-mqtt-acme/mosquitto-service:1883"

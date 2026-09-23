@@ -1,0 +1,35 @@
+---
+# IngressRoute de Traefik para MQTT WebSocket con TLS
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mosquitto-websocket-https
+  namespace: broker-mqtt-acme
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mqtt.acme.local`)
+      kind: Rule
+      services:
+        - name: prod-mosquitto-service
+          port: 9002
+  tls:
+    secretName: mosquitto-tls
+
+---
+# IngressRoute HTTP (redirige a HTTPS)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mosquitto-websocket-http
+  namespace: broker-mqtt-acme
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`mqtt.acme.local`)
+      kind: Rule
+      services:
+        - name: prod-mosquitto-service
+          port: 9002

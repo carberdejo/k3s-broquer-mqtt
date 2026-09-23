@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+  namespace: broker-mqtt-acme
+  labels:
+    app: mosquitto
+    component: config
+data:
+  mosquitto.conf: |
+    listener 1883
+    persistence true
+    persistence_location /mosquitto/data/
+    log_dest file /mosquitto/log/mosquitto.log
+
+    ## Authentication ##
+    allow_anonymous false
+    password_file /mosquitto/config/password.txt
+
+    listener 9002
+    protocol websockets

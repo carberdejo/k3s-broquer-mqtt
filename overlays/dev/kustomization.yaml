@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: broker-mqtt-acme
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+labels:
+  - pairs:
+      app: mosquitto
+      environment: dev
+      version: v1
+
+patches:
+  - path: deployment-patch.yaml

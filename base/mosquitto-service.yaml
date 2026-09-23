@@ -1,0 +1,24 @@
+# kubectl apply -f /home/iotuser/dpworld_rtls_iot_k3s/base/mosquitto-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto-service
+  namespace: broker-mqtt-acme
+  labels:
+    app: mosquitto
+    component: service
+spec:
+  type: NodePort
+  ports:
+    - port: 1883
+      targetPort: 1883
+      nodePort: 31883
+      protocol: TCP
+      name: mqtt
+    - port: 9002  
+      targetPort: 9002
+      nodePort: 31902
+      protocol: TCP
+      name: websockets
+  selector:
+    app: mosquitto

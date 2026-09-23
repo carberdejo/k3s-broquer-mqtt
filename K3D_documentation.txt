@@ -1,0 +1,293 @@
+DPWORLD - DOCUMENTACIÓN DEL CLUSTER DE KUBERNETES CON MOSQUITTO
+================================================================
+
+ÍNDICE
+------
+1. Instalación de K3S
+2. Creación del Cluster
+3. Configuración de Puertos
+4. Comandos de Monitoreo y Troubleshooting
+5. Gestión de Servicios
+6. Aplicación de Configuraciones
+7. Instalación y Configuración de Ingress
+8. Comandos de Administración
+9. Configuración de Autenticación
+10. Comandos de Prueba MQTT
+11. Notas Importantes para Producción
+
+================================================================
+
+1. INSTALACIÓN DE K3S
+=====================
+
+Para instalar K3S (Kubernetes ligero):
+
+curl -sfL https://get.k3s.io | sh -
+
+Descripción: K3S es una distribución ligera de Kubernetes que es ideal para 
+entornos edge, IoT y contenedores. Este comando descarga e instala 
+automáticamente K3S en el sistema.
+
+================================================================
+
+2. CREACIÓN DEL CLUSTER
+=======================
+
+Para crear el cluster inicial con puertos específicos:
+
+k3d cluster create frank-cluster --port "31883:31883@loadbalancer" --port "31001:31001@loadbalancer"
+
+Descripción: Crea un nuevo cluster llamado "frank-cluster" con dos puertos 
+expuestos:
+- Puerto 31883: Puerto MQTT para comunicación con dispositivos IoT
+- Puerto 31001: Puerto adicional para servicios específicos
+
+================================================================
+
+3. CONFIGURACIÓN DE PUERTOS ADICIONALES
+=======================================
+
+Para añadir nuevos puertos al cluster existente:
+
+k3d cluster edit frank-cluster --port-add "32684:32684@loadbalancer"
+k3d cluster edit frank-cluster --port-add "31883:31883@loadbalancer"
+k3d cluster edit frank-cluster --port-add "31001:31001@loadbalancer"
+k3d cluster edit frank-cluster --port-add "32017:32017@loadbalancer"
+
+Para iniciar el cluster:
+
+k3d cluster start frank-cluster
+
+Descripción de puertos:
+- 32684: Puerto para servicios adicionales
+- 31883: Puerto MQTT (confirmación)
+- 31001: Puerto de servicios (confirmación)
+- 32017: Puerto para aplicaciones específicas
+
+================================================================
+
+4. COMANDOS DE MONITOREO Y TROUBLESHOOTING
+==========================================
+
+4.1 Ver logs en tiempo real de Mosquitto:
+
+kubectl exec -n frank-mqtt -it deployment/mosquitto -- tail -f /mosquitto/log/mosquitto.log
+
+Descripción: Permite monitorear en tiempo real los logs del broker MQTT 
+Mosquitto para detectar problemas de conectividad o errores.
+
+4.2 Acceder al contenedor de Mosquitto:
+
+kubectl exec -n frank-mqtt -it deployment/mosquitto -- /bin/sh
+
+Descripción: Abre una shell interactiva dentro del contenedor de Mosquitto 
+para realizar tareas de administración directa.
+
+4.3 Listar pods activos:
+
+kubectl get pods -n frank-mqtt
+
+4.4 Acceder a un pod específico:
+
+kubectl exec -n frank-mqtt -it <nombre-del-pod> -- /bin/sh
+
+Descripción: Reemplazar <nombre-del-pod> con el nombre real del pod obtenido 
+del comando anterior.
+
+================================================================
+
+5. GESTIÓN DE SERVICIOS Y PORT-FORWARDING
+=========================================
+
+5.1 Exponer puerto MQTT (1883):
+
+kubectl port-forward svc/mosquitto-nodeport 1883:1883 -n frank-mqtt
+
+==========================================
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+
+
+- -h localhost: Host del broker
+- -p 31883: Puerto de conexión
+- -u frankgallo: Usuario de autenticación
+- -P admin: Contraseña
+8.2 Suscribirse a un tópico:
+Contraseña: admin
+
+===============================================
+
+
+kubectl top pods -n frank-mqtt
+
+10.5 Logs de pods específicos:
+kubectl scale deployment mosquitto --replicas=2 -n frank-mqtt
+11.2 Aplicar configuraciones desde backup:
+
+11.3 Verificar estado después de restauración:
+
+kubectl logs <nombre-del-pod> -n frank-mqtt
+kubectl get endpoints -n frank-mqtt
+12.3 Reiniciar deployment:
+================================================================
+DPWORLD - DOCUMENTACIÓN DEL CLUSTER DE KUBERNETES CON MOSQUITTO
+================================================================
+
+Contenido
+---------
+Introducción	4
+Herramientas Recomendadas	4
+Requisitos Previos	4
+Paso 1: Instalación de K3S	5
+Paso 2: Creación del Cluster	5
+Paso 3: Configuración de Puertos	6
+Paso 4: Aplicación de Configuraciones y Servicios	6
+Paso 5: Instalación y Configuración de Ingress	7
+Paso 6: Comprobaciones y Troubleshooting	7
+Recomendaciones	8
+Conclusiones	8
+
+================================================================
+
+Introducción
+============
+Este documento describe el procedimiento para desplegar y administrar un cluster de Kubernetes con Mosquitto como broker MQTT, orientado a equipos de producción. Incluye los pasos desde la instalación de herramientas hasta la validación y recomendaciones finales.
+
+================================================================
+
+Herramientas Recomendadas
+========================
+- K3S (Kubernetes ligero)
+- k3d (para clusters locales)
+- kubectl (CLI de Kubernetes)
+- Mosquitto (broker MQTT)
+- Mosquitto_pub y Mosquitto_sub (para pruebas MQTT)
+- Editor de texto (VS Code, nano, etc.)
+
+================================================================
+
+Requisitos Previos
+==================
+- Acceso a una máquina con Linux o WSL (Windows Subsystem for Linux)
+- Permisos de administrador/root
+- Conexión a internet
+- Docker instalado (para k3d)
+- Acceso a los archivos de configuración del proyecto
+
+================================================================
+
+Paso 1: Instalación de K3S
+=========================
+Ejecuta el siguiente comando para instalar K3S:
+
+curl -sfL https://get.k3s.io | sh -
+
+K3S es una distribución ligera de Kubernetes, ideal para entornos edge e IoT.
+
+================================================================
+
+Paso 2: Creación del Cluster
+===========================
+Para crear el cluster inicial con los puertos necesarios:
+
+k3d cluster create frank-cluster --port "31883:31883@loadbalancer" --port "31001:31001@loadbalancer"
+
+Esto crea un cluster llamado "frank-cluster" y expone los puertos principales.
+
+================================================================
+
+Paso 3: Configuración de Puertos
+===============================
+Para añadir o confirmar puertos adicionales:
+
+
+14. ESTRUCTURA DE ARCHIVOS DEL PROYECTO
+=======================================
+
+
+Inicia el cluster si es necesario:
+k3d cluster start frank-cluster
+
+================================================================
+
+Paso 4: Aplicación de Configuraciones y Servicios
+================================================
+Aplica las configuraciones de desarrollo:
+kubectl apply -k overlays/dev
+
+Para exponer el puerto MQTT (1883):
+La configuración del cluster se encuentra en:
+
+Para exponer el puerto WebSocket (9001):
+- Base configurations: base/
+
+Para monitorear logs en tiempo real:
+- Development overlays: overlays/dev/
+
+Para acceder al contenedor Mosquitto:
+- Production overlays: overlays/prod/
+
+Para listar pods activos:
+- Setup scripts: scripts/
+
+Para acceder a un pod específico:
+
+
+================================================================
+
+Paso 5: Instalación y Configuración de Ingress
+==============================================
+Instala el Ingress Controller:
+Archivos principales:
+
+Verifica los pods y servicios:
+- kustomization.yaml: Configuración de Kustomize
+- mosquitto-deployment.yaml: Deployment de Mosquitto
+
+================================================================
+
+Paso 6: Comprobaciones y Troubleshooting
+========================================
+Comandos útiles para verificar el estado del cluster y solucionar problemas:
+
+- mosquitto-service.yaml: Servicio de Mosquitto
+- mosquitto-configmap.yaml: Configuración de Mosquitto
+- mosquitto-secret.yaml: Secretos y credenciales
+- mosquitto-pvc.yaml: Persistent Volume Claims
+
+================================================================
+
+NOTAS FINALES
+=============
+
+1. Este documento debe ser actualizado cuando se realicen cambios en la 
+   configuración del cluster.
+
+2. Antes de ejecutar comandos en producción, siempre verificar el contexto 
+   de kubectl: kubectl config current-context
+
+
+================================================================
+
+Recomendaciones
+===============
+- Cambia las credenciales por defecto (usuario: frankgallo, contraseña: admin)
+
+================================================================
+
+Conclusiones
+============
+Este procedimiento permite desplegar y administrar un cluster Kubernetes con Mosquitto de forma segura y eficiente. Sigue las recomendaciones para ambientes productivos y mantén la documentación actualizada para el equipo.
+
+================================================================
+
+Fecha de creación: 1 de Diciembre de 2025
+Versión: 1.1
+Preparado por: Equipo de Desarrollo DPWORLD
+Destinado a: Equipo de Producción
+================================================================
+
+Fecha de creación: 1 de Diciembre de 2025
+Versión: 1.0
+Preparado por: Equipo de Desarrollo DPWORLD
+Destinado a: Equipo de Producción
