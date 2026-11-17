@@ -7,7 +7,7 @@ metadata:
     config.kubernetes.io/local-config: "true"
 
 resources:
-  # - namespace.yaml
+  - namespace.yaml
   - mosquitto-configmap.yaml
   - mosquitto-deployment.yaml
   - mosquitto-pvc.yaml

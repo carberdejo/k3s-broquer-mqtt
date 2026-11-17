@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MQTT WebSocket Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e2e4ec;
+      --muted: #6b7280;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --mono: 'Courier New', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+    .subtitle { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; margin-top: 10px; }
+    label:first-of-type { margin-top: 0; }
+
+    input, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger  { background: var(--red);   color: #fff; }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-muted   { background: var(--border); color: var(--text); }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot.connected    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.disconnected { background: var(--red); }
+    .dot.connecting   { background: var(--yellow); animation: pulse .8s infinite alternate; }
+
+    @keyframes pulse { from { opacity: 1; } to { opacity: .3; } }
+
+    .tls-badge {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .tls-on  { background: #14532d; color: #86efac; }
+    .tls-off { background: #451a03; color: #fcd34d; }
+
+    #log {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 320px;
+      overflow-y: auto;
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    #log .entry { margin-bottom: 2px; }
+    #log .ts    { color: var(--muted); }
+    #log .recv  { color: #93c5fd; }
+    #log .pub   { color: #86efac; }
+    #log .sys   { color: var(--muted); font-style: italic; }
+    #log .err   { color: var(--red); }
+    #log .topic { color: #fbbf24; font-weight: bold; }
+
+    .mt8 { margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<h1>MQTT WebSocket Test</h1>
+<p class="subtitle">Herramienta de prueba — WS (sin cifrado) vs WSS (con TLS)</p>
+
+<!-- Status bar -->
+<div class="status-bar" id="statusBar">
+  <div class="dot disconnected" id="statusDot"></div>
+  <span id="statusText">Desconectado</span>
+  <span class="tls-badge tls-off" id="tlsBadge">SIN TLS</span>
+</div>
+
+<div class="grid">
+
+  <!-- Connection card -->
+  <div class="card">
+    <h2>Conexión</h2>
+
+    <label>Protocolo</label>
+    <select id="protocol">
+      <option value="ws">ws://  — WebSocket plano (sin TLS)</option>
+      <option value="wss">wss:// — WebSocket seguro (con TLS)</option>
+    </select>
+
+    <label>Host</label>
+    <input id="host" value="localhost" placeholder="localhost o mqtt.acme.local">
+
+    <label>Puerto WebSocket</label>
+    <input id="port" value="31902" type="number" placeholder="31902">
+
+    <label>Usuario</label>
+    <input id="user" value="frankgallo">
+
+    <label>Contraseña</label>
+    <input id="pass" type="password" placeholder="contraseña">
+
+    <div class="row mt8">
+      <button class="btn-primary" id="btnConnect" onclick="connect()">Conectar</button>
+      <button class="btn-danger"  id="btnDisconnect" onclick="disconnect()" disabled>Desconectar</button>
+    </div>
+
+    <div style="margin-top:12px; padding:10px; background:var(--bg); border-radius:6px; font-size:11px; color:var(--muted); line-height:1.7;">
+      <b style="color:var(--text)">WS plano</b> → host: localhost, puerto: 31902<br>
+      <b style="color:var(--text)">WSS (Traefik)</b> → host: mqtt.acme.local, puerto: 443<br>
+      <b style="color:var(--text)">WSS (NodePort)</b> → host: localhost, puerto: 31902 (necesita TLS en mosquitto.conf)
+    </div>
+  </div>
+
+  <!-- Pub/Sub card -->
+  <div class="card">
+    <h2>Publicar</h2>
+    <label>Topic</label>
+    <input id="pubTopic" value="test/ws">
+    <label>Mensaje</label>
+    <input id="pubMsg" value='{"fuente":"navegador","tls":true}'>
+    <div class="row mt8">
+      <button class="btn-success" id="btnPublish" onclick="publish()" disabled>Publicar</button>
+    </div>
+
+    <h2 style="margin-top:20px">Suscribirse</h2>
+    <label>Topic (acepta wildcards # y +)</label>
+    <div class="row">
+      <input id="subTopic" value="#">
+      <button class="btn-muted" id="btnSubscribe" onclick="subscribe()" disabled>Suscribir</button>
+    </div>
+    <div id="subList" style="margin-top:8px; font-size:11px; color:var(--muted);">Sin suscripciones activas</div>
+  </div>
+
+</div>
+
+<!-- Log -->
+<div class="card" style="margin-top:16px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+    <h2 style="margin:0">Log de mensajes</h2>
+    <button class="btn-muted" onclick="clearLog()" style="font-size:11px; padding:4px 10px">Limpiar</button>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script>
+  let client = null;
+  const subs = new Set();
+
+  function ts() {
+    return new Date().toLocaleTimeString('es', { hour12: false });
+  }
+
+  function log(msg, cls = 'sys') {
+    const el = document.getElementById('log');
+    el.innerHTML += `<div class="entry"><span class="ts">[${ts()}]</span> <span class="${cls}">${msg}</span></div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  function setUI(state) {
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const badge = document.getElementById('tlsBadge');
+    const proto = document.getElementById('protocol').value;
+
+    dot.className = 'dot ' + state;
+    document.getElementById('btnConnect').disabled    = state !== 'disconnected';
+    document.getElementById('btnDisconnect').disabled = state !== 'connected';
+    document.getElementById('btnPublish').disabled    = state !== 'connected';
+    document.getElementById('btnSubscribe').disabled  = state !== 'connected';
+
+    if (state === 'connected') {
+      text.textContent = `Conectado — ${proto}://${document.getElementById('host').value}:${document.getElementById('port').value}`;
+      if (proto === 'wss') {
+        badge.textContent = 'TLS ACTIVO';
+        badge.className = 'tls-badge tls-on';
+      } else {
+        badge.textContent = 'SIN TLS — tráfico legible en la red';
+        badge.className = 'tls-badge tls-off';
+      }
+    } else if (state === 'connecting') {
+      text.textContent = 'Conectando...';
+    } else {
+      text.textContent = 'Desconectado';
+      badge.textContent = 'SIN TLS';
+      badge.className = 'tls-badge tls-off';
+    }
+  }
+
+  function connect() {
+    const proto = document.getElementById('protocol').value;
+    const host  = document.getElementById('host').value;
+    const port  = parseInt(document.getElementById('port').value);
+    const user  = document.getElementById('user').value;
+    const pass  = document.getElementById('pass').value;
+
+    const url = `${proto}://${host}:${port}/mqtt`;
+    log(`Conectando a ${url} …`);
+    setUI('connecting');
+
+    const opts = {
+      username: user || undefined,
+      password: pass || undefined,
+      connectTimeout: 8000,
+      // Para WSS con certificado autofirmado en el navegador:
+      // rejectUnauthorized: false  (no es necesario si el CA está instalado en el OS)
+    };
+
+    client = mqtt.connect(url, opts);
+
+    client.on('connect', () => {
+      log(`Conexión establecida (${proto.toUpperCase()})`, 'sys');
+      if (proto === 'wss') {
+        log('TLS activo — los mensajes viajan cifrados sobre la red', 'pub');
+      } else {
+        log('ADVERTENCIA: sin TLS — los mensajes son visibles en la red', 'err');
+      }
+      setUI('connected');
+      subs.clear();
+      document.getElementById('subList').textContent = 'Sin suscripciones activas';
+    });
+
+    client.on('message', (topic, payload) => {
+      let msg;
+      try { msg = JSON.stringify(JSON.parse(payload.toString()), null, 0); }
+      catch { msg = payload.toString(); }
+      log(`<span class="topic">${escHtml(topic)}</span>  →  ${escHtml(msg)}`, 'recv');
+    });
+
+    client.on('error', (err) => {
+      log(`Error: ${err.message}`, 'err');
+      setUI('disconnected');
+    });
+
+    client.on('close', () => {
+      log('Conexión cerrada');
+      setUI('disconnected');
+    });
+
+    client.on('reconnect', () => {
+      log('Reconectando…');
+      setUI('connecting');
+    });
+  }
+
+  function disconnect() {
+    if (client) { client.end(true); client = null; }
+    setUI('disconnected');
+    log('Desconectado manualmente');
+  }
+
+  function publish() {
+    const topic = document.getElementById('pubTopic').value;
+    const msg   = document.getElementById('pubMsg').value;
+    if (!topic || !client) return;
+    client.publish(topic, msg, { qos: 1 });
+    log(`→ <span class="topic">${escHtml(topic)}</span>  ${escHtml(msg)}`, 'pub');
+  }
+
+  function subscribe() {
+    const topic = document.getElementById('subTopic').value;
+    if (!topic || !client) return;
+    client.subscribe(topic, { qos: 1 }, (err) => {
+      if (err) { log(`Error suscribiendo a ${topic}: ${err.message}`, 'err'); return; }
+      subs.add(topic);
+      log(`Suscrito a: ${escHtml(topic)}`);
+      document.getElementById('subList').textContent = 'Activos: ' + [...subs].join(', ');
+    });
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Enter en los campos de publicar/suscribir
+  document.getElementById('pubMsg').addEventListener('keydown', e => { if (e.key === 'Enter') publish(); });
+  document.getElementById('subTopic').addEventListener('keydown', e => { if (e.key === 'Enter') subscribe(); });
+</script>
+</body>
+</html>

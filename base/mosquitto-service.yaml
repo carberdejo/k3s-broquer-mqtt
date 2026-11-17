@@ -15,10 +15,15 @@ spec:
       nodePort: 31883
       protocol: TCP
       name: mqtt
-    - port: 9002  
+    - port: 9002
       targetPort: 9002
       nodePort: 31902
       protocol: TCP
       name: websockets
+    - port: 8883
+      targetPort: 8883
+      nodePort: 31884
+      protocol: TCP
+      name: mqtts
   selector:
     app: mosquitto

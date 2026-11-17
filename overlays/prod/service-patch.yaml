@@ -14,3 +14,7 @@ spec:
     targetPort: 9002
     protocol: TCP
     name: websockets
+  - port: 8883
+    targetPort: 8883
+    protocol: TCP
+    name: mqtts
