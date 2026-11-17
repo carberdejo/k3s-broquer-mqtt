@@ -5,7 +5,7 @@ Manifiestos de Kubernetes para desplegar el broker MQTT Mosquitto en k3s usando 
 ## Estructura del repositorio
 
 ```
-dpworld_rtls_iot_mqtt/
+k3s-broquer-mqtt/
 ├── base/                           # Configuración base (aplica a todos los entornos)
 │   ├── namespace.yaml              # Namespace: broker-mqtt-acme
 │   ├── mosquitto-configmap.yaml    # mosquitto.conf: listeners, TLS, auth
@@ -38,11 +38,11 @@ Todos los recursos viven en el namespace `broker-mqtt-acme`.
 
 ## Puertos
 
-| Puerto | Protocolo | Descripción |
-|--------|-----------|-------------|
-| 1883   | MQTT TCP  | Conexión estándar |
-| 9002   | WebSockets | Conexión via WebSocket |
-| 8883   | MQTT TLS  | Conexión cifrada con certificados |
+| Puerto | Protocolo  | Descripción                       |
+| ------ | ---------- | --------------------------------- |
+| 1883   | MQTT TCP   | Conexión estándar                 |
+| 9002   | WebSockets | Conexión via WebSocket            |
+| 8883   | MQTT TLS   | Conexión cifrada con certificados |
 
 ## Prerequisitos
 
@@ -79,24 +79,24 @@ metadata:
   namespace: broker-mqtt-acme
 type: Opaque
 data:
-  ca.crt:     <base64>
+  ca.crt: <base64>
   server.crt: <base64>
-  server.key:  <base64>
+  server.key: <base64>
 ```
 
 El deployment monta ese Secret como directorio en el pod:
 
 ```yaml
 volumes:
-- name: mosquitto-tls
-  secret:
-    secretName: mosquitto-tls  # nombre del Secret en k8s
-    defaultMode: 0400
+  - name: mosquitto-tls
+    secret:
+      secretName: mosquitto-tls # nombre del Secret en k8s
+      defaultMode: 0400
 
 volumeMounts:
-- name: mosquitto-tls
-  mountPath: /mosquitto/certs  # cada clave se convierte en un archivo aquí
-  readOnly: true
+  - name: mosquitto-tls
+    mountPath: /mosquitto/certs # cada clave se convierte en un archivo aquí
+    readOnly: true
 ```
 
 Resultado: el pod ve exactamente esto en su filesystem:
@@ -186,10 +186,10 @@ kubectl apply -k overlays/<entorno>/
 
 Dos PVCs con StorageClass `local-path` (default de k3s):
 
-| PVC | Tamaño | Descripción |
-|-----|--------|-------------|
-| `mosquitto-data-pvc` | 1Gi | Persistencia del broker (retained messages, etc.) |
-| `mosquitto-log-pvc`  | 500Mi | Archivos de log de Mosquitto |
+| PVC                  | Tamaño | Descripción                                       |
+| -------------------- | ------ | ------------------------------------------------- |
+| `mosquitto-data-pvc` | 1Gi    | Persistencia del broker (retained messages, etc.) |
+| `mosquitto-log-pvc`  | 500Mi  | Archivos de log de Mosquitto                      |
 
 Los datos persisten entre reinicios y actualizaciones del pod.
 
